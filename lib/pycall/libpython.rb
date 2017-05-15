@@ -143,9 +143,9 @@ module PyCall
     # --- types ---
 
     if PYTHON_VERSION < '3.2'
-      typedef :long, :Py_hash_t
+      FFI.typedef :long, :Py_hash_t
     else
-      typedef :ssize_t, :Py_hash_t
+      FFI.typedef :ssize_t, :Py_hash_t
     end
 
     # --- global variables ---
@@ -206,6 +206,7 @@ module PyCall
 
     # Object
 
+    attach_function :_PyObject_New, [PyTypeObjectStruct.ptr], PyObjectStruct.ptr
     attach_function :PyObject_RichCompare, [PyObjectStruct.by_ref, PyObjectStruct.by_ref, :int], PyObjectStruct.by_ref
     attach_function :PyObject_GetAttrString, [PyObjectStruct.by_ref, :string], PyObjectStruct.by_ref
     attach_function :PyObject_SetAttrString, [PyObjectStruct.by_ref, :string, PyObjectStruct.by_ref], :int

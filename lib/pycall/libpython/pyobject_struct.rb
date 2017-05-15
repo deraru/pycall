@@ -6,6 +6,8 @@ module PyCall
       layout ob_refcnt: :ssize_t,
              ob_type:   PyObjectStruct.by_ref
 
+      HEAD_SIZE = FFI.type_size(:ssize_t) + FFI.type_size(:pointer)
+
       def self.null
         new(FFI::Pointer::NULL)
       end

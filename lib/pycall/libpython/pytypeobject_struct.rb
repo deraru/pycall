@@ -2,6 +2,34 @@ require 'ffi'
 
 module PyCall
   module LibPython
+    # types:
+    T_SHORT  = 0
+    T_INT    = 1
+    T_LONG   = 2
+    T_FLOAT  = 3
+    T_DOUBLE = 4
+    T_STRING = 5
+    T_OBJECT = 6
+    T_CHAR   = 7
+    T_BYTE   = 8
+    T_UBYTE  = 9
+    T_USHORT = 10
+    T_UINT   = 11
+    T_ULONG  = 12
+    T_STRING_INPLACE = 13
+    T_BOOL      = 14
+    T_OBJECT_EX = 16
+    T_LONGLONG  = 17 # added in Python 2.5
+    T_ULONGLONG = 18 # added in Python 2.5
+    T_PYSSIZET  = 19 # added in Python 2.6
+    T_NONE      = 20 # added in Python 3.0
+
+    # flags:
+    READONLY = 1
+    READ_RESTRICTED = 2
+    PY_WRITE_RESTRICTED = 4
+    RESTRICTED = (READ_RESTRICTED | PY_WRITE_RESTRICTED)
+
     # Python 2.7
     Py_TPFLAGS_HAVE_GETCHARBUFFER  = 0x00000001<<0
     Py_TPFLAGS_HAVE_SEQUENCE_IN    = 0x00000001<<1
@@ -51,6 +79,22 @@ module PyCall
              set:     :pointer,  # may be NULL for read-only members
              doc:     :string,
              closure: :pointer
+    end
+
+    class PyMemberDef < FFI::Struct
+      layout name:   :string,
+             type:   :int,
+             offset: :ssize_t,
+             flags:  :int,
+             doc:    :string
+
+      [:name, :doc].each do |field|
+        define_method(:"#{field}=") do |str|
+          saved_str = FFI::MemoryPointer.from_string(str)
+          instance_variable_set(:"@saved_#{field}", saved_str)
+          self.pointer.put_pointer(offset_of(field), saved_str)
+        end
+      end
     end
 
     class PyTypeObjectStruct < FFI::Struct
@@ -152,25 +196,26 @@ module PyCall
           super
         else
           name, basic_size = *args
-          t = super()
-          t[:tp_basicsize] = basic_size
-          stackless_extension_flag = PyCall.has_stackless_extension ? Py_TPFLAGS_HAVE_STACKLESS_EXTENSION_ : 0
-          t[:tp_flags] = if PYTHON_VERSION >= '3'
-                           stackless_extension_flag | Py_TPFLAGS_HAVE_VERSION_TAG
-                         else
-                           Py_TPFLAGS_HAVE_GETCHARBUFFER |
-                             Py_TPFLAGS_HAVE_SEQUENCE_IN |
-                             Py_TPFLAGS_HAVE_INPLACEOPS |
-                             Py_TPFLAGS_HAVE_RICHCOMPARE |
-                             Py_TPFLAGS_HAVE_WEAKREFS |
-                             Py_TPFLAGS_HAVE_ITER |
-                             Py_TPFLAGS_HAVE_CLASS |
-                             stackless_extension_flag |
-                             Py_TPFLAGS_HAVE_INDEX
-                         end
-          t.tp_name = name
-          yield t if block_given?
-          t[:tp_new] = LibPython.find_symbol(:PyType_GenericNew) if t[:tp_new] == FFI::Pointer::NULL
+          super().tap do |t|
+            t[:tp_basicsize] = basic_size
+            stackless_extension_flag = PyCall.has_stackless_extension ? Py_TPFLAGS_HAVE_STACKLESS_EXTENSION_ : 0
+            t[:tp_flags] = if PYTHON_VERSION >= '3'
+                             stackless_extension_flag | Py_TPFLAGS_HAVE_VERSION_TAG
+                           else
+                             Py_TPFLAGS_HAVE_GETCHARBUFFER |
+                               Py_TPFLAGS_HAVE_SEQUENCE_IN |
+                               Py_TPFLAGS_HAVE_INPLACEOPS |
+                               Py_TPFLAGS_HAVE_RICHCOMPARE |
+                               Py_TPFLAGS_HAVE_WEAKREFS |
+                               Py_TPFLAGS_HAVE_ITER |
+                               Py_TPFLAGS_HAVE_CLASS |
+                               stackless_extension_flag |
+                               Py_TPFLAGS_HAVE_INDEX
+                           end
+            t.tp_name = name
+            yield t if block_given?
+            t[:tp_new] = LibPython.find_symbol(:PyType_GenericNew) if t[:tp_new] == FFI::Pointer::NULL
+          end
         end
       end
 
