@@ -115,7 +115,7 @@ module PyCall
 
              # Attribute descriptor and subclassing stuff
              tp_methods: PyMethodDef.by_ref,
-             tp_members: PyMethodDef.by_ref,
+             tp_members: PyMemberDef.by_ref,
              tp_getset: PyGetSetDef.by_ref,
              tp_base: :pointer,
              tp_dict: PyObjectStruct.by_ref,
